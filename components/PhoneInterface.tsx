@@ -136,18 +136,28 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
 
                     <div className="summary-grid">
                         <div className="summary-item">
-                            <span className="summary-label">Name</span>
-                            <span className="summary-value">{leadData.fullName || '-'}</span>
+                            <span className="summary-label">Full Name</span>
+                            <span className="summary-value">{leadData.fullName || 'N/A'}</span>
                         </div>
                         <div className="summary-item">
                             <span className="summary-label">Mobile</span>
-                            <span className="summary-value">{leadData.mobile || '-'}</span>
+                            <span className="summary-value">{leadData.mobile || 'N/A'}</span>
                         </div>
-                        <div className="summary-item" style={{ gridColumn: 'span 2' }}>
-                            <span className="summary-label">Requirements</span>
-                            <span className="summary-value">
-                                {leadData.diamondShape || 'Any'} shape, {leadData.caratSize || 'Any'} ct, {leadData.location || ''}
-                            </span>
+                        <div className="summary-item">
+                            <span className="summary-label">Location</span>
+                            <span className="summary-value">{leadData.location || 'N/A'}</span>
+                        </div>
+                        <div className="summary-item">
+                            <span className="summary-label">Diamond Shape</span>
+                            <span className="summary-value">{leadData.diamondShape || 'N/A'}</span>
+                        </div>
+                        <div className="summary-item">
+                            <span className="summary-label">Carat Size</span>
+                            <span className="summary-value">{leadData.caratSize || 'N/A'}</span>
+                        </div>
+                        <div className="summary-item">
+                            <span className="summary-label">Price Range</span>
+                            <span className="summary-value">{leadData.priceRange || 'N/A'}</span>
                         </div>
                     </div>
                 </div>
