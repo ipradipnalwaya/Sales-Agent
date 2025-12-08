@@ -36,16 +36,35 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const val = (v: string | null) => v || 'N/A';
+
   // -----------------------------------------------------------------------
   // RENDER: DISCONNECTED / ERROR / PERMISSION DENIED (START SCREEN)
   // -----------------------------------------------------------------------
   if (status === 'disconnected' || status === 'error' || status === 'permission_denied') {
     return (
-      <div className="phone-screen light flex flex-col items-center">
-         {/* Top Decoration */}
-         <div style={{ width: '100%', height: '35%', background: '#0f172a', borderBottomLeftRadius: '2.5rem', borderBottomRightRadius: '2.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-             
-             <div className="avatar-lg" style={{ width: '8rem', height: '8rem', marginBottom: '-4rem', border: '4px solid white', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+      <div className="phone-screen light flex flex-col h-full">
+         {/* Top Decoration - Flexible height but constrained */}
+         <div style={{ 
+             flexShrink: 0,
+             height: '35%', 
+             minHeight: '220px',
+             background: '#0f172a', 
+             borderBottomLeftRadius: '2.5rem', 
+             borderBottomRightRadius: '2.5rem', 
+             display: 'flex', 
+             flexDirection: 'column', 
+             alignItems: 'center', 
+             justifyContent: 'center', 
+             position: 'relative' 
+         }}>
+             <div className="avatar-lg" style={{ 
+                 width: '8rem', 
+                 height: '8rem', 
+                 marginBottom: '-4rem', 
+                 border: '4px solid white', 
+                 boxShadow: '0 10px 25px rgba(0,0,0,0.2)' 
+             }}>
                 <img 
                   src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=300&h=300" 
                   alt="Ananya"
@@ -53,9 +72,10 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
              </div>
          </div>
 
-         <div className="scroll-content w-full flex flex-col items-center pt-20">
-            <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.25rem' }}>Ananya</h1>
-            <p style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: 500, marginBottom: '2rem' }}>AI Diamond Sales Executive</p>
+         {/* Scrollable Content Area */}
+         <div className="scroll-content flex-1 flex flex-col items-center pt-20 w-full">
+            <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.25rem', textAlign: 'center' }}>Ananya</h1>
+            <p style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: 500, marginBottom: '2rem', textAlign: 'center' }}>AI Diamond Sales Executive</p>
             
             {status === 'error' && (
               <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '0.75rem', padding: '1rem', marginBottom: '1.5rem', color: '#b91c1c', fontSize: '0.875rem', textAlign: 'center', width: '90%' }}>
@@ -65,7 +85,7 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
 
             {status === 'permission_denied' && (
               <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '0.75rem', padding: '1rem', marginBottom: '1.5rem', color: '#c2410c', fontSize: '0.875rem', textAlign: 'center', width: '90%' }}>
-                  <strong>Microphone Required</strong><br/>Please allow microphone access to use the voice agent.
+                  <strong>Microphone Required</strong><br/>Please allow microphone access.
               </div>
             )}
             
@@ -77,6 +97,7 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
             )}
          </div>
 
+         {/* Bottom Actions - Fixed at bottom */}
          <div className="bottom-actions w-full">
             <button 
               onClick={onStartCall}
@@ -95,7 +116,7 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
   // -----------------------------------------------------------------------
   if (status === 'ended') {
     return (
-        <div className="phone-screen light flex flex-col">
+        <div className="phone-screen light flex flex-col h-full">
             <div className="summary-header">
                <div style={{ width: '4rem', height: '4rem', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', marginBottom: '1rem' }}>
                    💎
@@ -104,7 +125,7 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
                <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginTop: '0.25rem' }}>Thank you for speaking with us</p>
             </div>
             
-            <div className="scroll-content">
+            <div className="scroll-content flex-1">
                <div className="contact-card">
                    <h3 style={{ color: '#1e3a8a', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', margin: '0 0 0.5rem 0' }}>Dealership Contact</h3>
                    <div style={{ color: '#1e293b', fontWeight: 700, fontSize: '1.125rem' }}>BharatDiamondConnect</div>
@@ -112,7 +133,7 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
                </div>
 
                <div>
-                   <h4 style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.75rem' }}>Lead Details</h4>
+                   <h4 style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.75rem', paddingLeft: '0.5rem' }}>Lead Details</h4>
                    
                    {leadData.summary && (
                      <div style={{ backgroundColor: '#f0f9ff', padding: '1rem', borderRadius: '1rem', marginBottom: '1.25rem', fontSize: '0.9rem', color: '#334155', borderLeft: '4px solid #3b82f6', lineHeight: 1.5 }}>
@@ -123,27 +144,27 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
                    <div className="summary-grid">
                        <div className="summary-item">
                            <span className="summary-label">Full Name</span>
-                           <span className="summary-value">{leadData.fullName || 'N/A'}</span>
+                           <span className="summary-value">{val(leadData.fullName)}</span>
                        </div>
                        <div className="summary-item">
                            <span className="summary-label">Mobile</span>
-                           <span className="summary-value">{leadData.mobile || 'N/A'}</span>
+                           <span className="summary-value">{val(leadData.mobile)}</span>
                        </div>
                        <div className="summary-item">
                            <span className="summary-label">Location</span>
-                           <span className="summary-value">{leadData.location || 'N/A'}</span>
+                           <span className="summary-value">{val(leadData.location)}</span>
                        </div>
                        <div className="summary-item">
                            <span className="summary-label">Diamond Shape</span>
-                           <span className="summary-value">{leadData.diamondShape || 'N/A'}</span>
+                           <span className="summary-value">{val(leadData.diamondShape)}</span>
                        </div>
                        <div className="summary-item">
                            <span className="summary-label">Carat Size</span>
-                           <span className="summary-value">{leadData.caratSize || 'N/A'}</span>
+                           <span className="summary-value">{val(leadData.caratSize)}</span>
                        </div>
                        <div className="summary-item">
                            <span className="summary-label">Price Range</span>
-                           <span className="summary-value">{leadData.priceRange || 'N/A'}</span>
+                           <span className="summary-value">{val(leadData.priceRange)}</span>
                        </div>
                    </div>
                </div>

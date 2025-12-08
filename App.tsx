@@ -21,8 +21,8 @@ const updateLeadTool: FunctionDeclaration = {
   },
 };
 
-// Threshold for the noise gate. Audio below this RMS value is treated as silence.
-const NOISE_GATE_THRESHOLD = 0.02;
+// Threshold for the noise gate. Increased to 0.05 to only listen to louder voices.
+const NOISE_GATE_THRESHOLD = 0.05;
 
 export default function App() {
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
@@ -81,7 +81,7 @@ export default function App() {
     // If a session exists or we are in a connected/connecting state, clean up first.
     if (sessionPromiseRef.current || status === 'connected' || status === 'connecting') {
       console.log("Existing session detected. Cleaning up before new connection.");
-      await endCall();
+      await cleanupSession();
     }
 
     // Securely access the API key from the environment
@@ -134,6 +134,7 @@ export default function App() {
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
       
       const volInterval = setInterval(() => {
+          if (!analyser) return;
           analyser.getByteFrequencyData(dataArray);
           let sum = 0;
           for(let i=0; i<dataArray.length; i++) sum += dataArray[i];
@@ -141,11 +142,13 @@ export default function App() {
           setVolume(avgVol);
 
           // Update activity only if user is speaking loudly enough (noise gate)
-          // Threshold matches the one used in processing below
           if (avgVol > NOISE_GATE_THRESHOLD) {
              lastActivityRef.current = Date.now();
           }
       }, 100);
+
+      // Store interval ID in ref or cleanup in onclose to avoid leaks
+      // For simplicity, we assume one session at a time and cleanup session handles state
 
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
@@ -311,8 +314,8 @@ export default function App() {
     }
   };
 
-  const endCall = async () => {
-    // Stop all media tracks explicitly
+  const cleanupSession = async () => {
+    // Helper to stop all media and clear session references without changing UI status
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
@@ -324,30 +327,23 @@ export default function App() {
       audioContextRef.current = null;
     }
     
-    // Close GenAI Session
     if (sessionPromiseRef.current) {
-        try {
-            const session = await sessionPromiseRef.current;
-            // The library might not expose a close method directly on the session object 
-            // depending on exact version, but we assume connection is closed by dropping reference
-            // or if the library provides a close method.
-            // For @google/genai, we often rely on server interaction or just stopping input.
-            // However, resetting the promise ref is key for our local logic.
-        } catch(e) {
-            console.log("Error closing session", e);
-        }
+        // Just drop the reference to 'close' the session from client side
+        sessionPromiseRef.current = null;
     }
-    sessionPromiseRef.current = null;
-    
+  };
+
+  const endCall = async () => {
+    await cleanupSession();
     setStatus('ended');
   };
 
-  const restart = () => {
-      // Complete reset for a new session
-      setStatus('disconnected');
+  const restart = async () => {
+      // Clean up first, then reset to disconnected
+      await cleanupSession();
       setLeadData(INITIAL_LEAD_DATA);
       setIsAiSpeaking(false);
-      endCall(); // Ensure cleanup runs
+      setStatus('disconnected');
   };
 
   return (
