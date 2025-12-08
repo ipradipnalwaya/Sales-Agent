@@ -212,7 +212,7 @@ export default function App() {
   };
 
   return (
-    <div className="h-screen w-full bg-slate-100 overflow-hidden">
+    <div className="app-container">
         <PhoneInterface 
             status={status === 'ended' ? 'ended' : status}
             isAiSpeaking={isAiSpeaking}
