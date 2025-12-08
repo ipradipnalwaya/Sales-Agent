@@ -43,70 +43,52 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
   // -----------------------------------------------------------------------
   if (status === 'disconnected' || status === 'error' || status === 'permission_denied') {
     return (
-      <div className="phone-screen light flex flex-col h-full">
-         {/* Top Decoration - Flexible height but constrained */}
-         <div style={{ 
-             flexShrink: 0,
-             height: '35%', 
-             minHeight: '220px',
-             background: '#0f172a', 
-             borderBottomLeftRadius: '2.5rem', 
-             borderBottomRightRadius: '2.5rem', 
-             display: 'flex', 
-             flexDirection: 'column', 
-             alignItems: 'center', 
-             justifyContent: 'center', 
-             position: 'relative' 
-         }}>
-             <div className="avatar-lg" style={{ 
-                 width: '8rem', 
-                 height: '8rem', 
-                 marginBottom: '-4rem', 
-                 border: '4px solid white', 
-                 boxShadow: '0 10px 25px rgba(0,0,0,0.2)' 
-             }}>
-                <img 
-                  src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=300&h=300" 
-                  alt="Ananya"
-                />
-             </div>
-         </div>
-
-         {/* Scrollable Content Area */}
-         <div className="scroll-content flex-1 flex flex-col items-center pt-20 w-full">
-            <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.25rem', textAlign: 'center' }}>Ananya</h1>
-            <p style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: 500, marginBottom: '2rem', textAlign: 'center' }}>AI Diamond Sales Executive</p>
+      <div className="h-full w-full relative">
+        <div className="bg-ambient"></div>
+        <div className="screen-container">
+          
+          {/* Top Branding */}
+          <div className="flex-1 flex flex-col items-center justify-center text-center">
+            <div className="hero-image">
+               <div className="hero-glow"></div>
+               {/* Abstract Diamond Icon */}
+               <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="#d4af37" strokeWidth="0.5">
+                 <path d="M6 3h12l4 6-10 13L2 9z" />
+                 <path d="M11 3v6" />
+                 <path d="M13 3v6" />
+                 <path d="M2 9h20" />
+                 <path d="M12 22L7 9" />
+                 <path d="M12 22l5-13" />
+               </svg>
+            </div>
             
+            <h1 className="brand-title">Bharat<br/>Diamond</h1>
+            <div className="brand-subtitle">Private Concierge</div>
+
+            <p style={{ color: '#a1a1aa', marginTop: '2rem', maxWidth: '280px', fontWeight: 300 }}>
+              Experience AI-driven diamond sourcing. Connect with Ananya for a personalized consultation.
+            </p>
+
+            {/* Error States */}
             {status === 'error' && (
-              <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '0.75rem', padding: '1rem', marginBottom: '1.5rem', color: '#b91c1c', fontSize: '0.875rem', textAlign: 'center', width: '90%' }}>
-                  <strong>System Unavailable</strong><br/>Please try again later.
-              </div>
+               <div style={{ marginTop: '2rem', padding: '0.75rem', background: 'var(--error-bg)', color: 'var(--error-text)', borderRadius: '12px', fontSize: '0.8rem' }}>
+                 System Temporarily Unavailable
+               </div>
             )}
-
             {status === 'permission_denied' && (
-              <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '0.75rem', padding: '1rem', marginBottom: '1.5rem', color: '#c2410c', fontSize: '0.875rem', textAlign: 'center', width: '90%' }}>
-                  <strong>Microphone Required</strong><br/>Please allow microphone access.
-              </div>
+               <div style={{ marginTop: '2rem', padding: '0.75rem', background: 'var(--error-bg)', color: 'var(--error-text)', borderRadius: '12px', fontSize: '0.8rem' }}>
+                 Microphone Access Required
+               </div>
             )}
-            
-            {status === 'disconnected' && (
-              <div style={{ textAlign: 'center', color: '#475569', lineHeight: 1.6, marginBottom: '2rem', padding: '0 1.5rem' }}>
-                  <p>Welcome to <strong>BharatDiamondConnect</strong>.</p>
-                  <p style={{ marginTop: '0.5rem', fontSize: '0.9rem' }}>I can help you browse our certified diamond inventory and connect you with top manufacturers.</p>
-              </div>
-            )}
-         </div>
+          </div>
 
-         {/* Bottom Actions - Fixed at bottom */}
-         <div className="bottom-actions w-full">
-            <button 
-              onClick={onStartCall}
-              className="btn-primary"
-            >
-              <span style={{ fontSize: '1.25rem' }}>📞</span>
-              {status === 'permission_denied' ? 'Try Again' : status === 'error' ? 'Retry Connection' : 'Start Call'}
+          {/* Bottom Action */}
+          <div className="w-full pt-6">
+            <button onClick={onStartCall} className="btn-luxury">
+              {status === 'permission_denied' ? 'Retry Access' : 'Initiate Consultation'}
             </button>
-         </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -116,68 +98,67 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
   // -----------------------------------------------------------------------
   if (status === 'ended') {
     return (
-        <div className="phone-screen light flex flex-col h-full">
-            <div className="summary-header">
-               <div style={{ width: '4rem', height: '4rem', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', marginBottom: '1rem' }}>
-                   💎
-               </div>
-               <h2 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>Call Summary</h2>
-               <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginTop: '0.25rem' }}>Thank you for speaking with us</p>
-            </div>
-            
-            <div className="scroll-content flex-1">
-               <div className="contact-card">
-                   <h3 style={{ color: '#1e3a8a', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', margin: '0 0 0.5rem 0' }}>Dealership Contact</h3>
-                   <div style={{ color: '#1e293b', fontWeight: 700, fontSize: '1.125rem' }}>BharatDiamondConnect</div>
-                   <div style={{ color: '#2563eb', fontWeight: 700, fontSize: '1.25rem', marginTop: '0.25rem' }}>955 955 001</div>
-               </div>
+        <div className="h-full w-full relative">
+           <div className="bg-ambient"></div>
+           <div className="screen-container">
+              
+              <div className="text-center pt-8 pb-6">
+                 <h2 style={{ fontSize: '1.75rem', color: '#fff' }}>Consultation Report</h2>
+                 <p style={{ color: '#a1a1aa', fontSize: '0.9rem' }}>Summary of your requirements</p>
+              </div>
 
-               <div>
-                   <h4 style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.75rem', paddingLeft: '0.5rem' }}>Lead Details</h4>
-                   
-                   {leadData.summary && (
-                     <div style={{ backgroundColor: '#f0f9ff', padding: '1rem', borderRadius: '1rem', marginBottom: '1.25rem', fontSize: '0.9rem', color: '#334155', borderLeft: '4px solid #3b82f6', lineHeight: 1.5 }}>
-                       {leadData.summary}
-                     </div>
-                   )}
+              <div className="flex-1 scroll-y pb-4">
+                 <div className="contact-box">
+                    <div style={{ color: '#d4af37', fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Your Dedicated Dealership</div>
+                    <div style={{ fontSize: '1.25rem', fontFamily: 'Playfair Display', color: '#fff' }}>Bharat Diamond Connect</div>
+                    <div style={{ fontSize: '1.1rem', marginTop: '0.25rem', color: '#fff', fontWeight: 600 }}>955 955 001</div>
+                 </div>
 
-                   <div className="summary-grid">
-                       <div className="summary-item">
-                           <span className="summary-label">Full Name</span>
-                           <span className="summary-value">{val(leadData.fullName)}</span>
-                       </div>
-                       <div className="summary-item">
-                           <span className="summary-label">Mobile</span>
-                           <span className="summary-value">{val(leadData.mobile)}</span>
-                       </div>
-                       <div className="summary-item">
-                           <span className="summary-label">Location</span>
-                           <span className="summary-value">{val(leadData.location)}</span>
-                       </div>
-                       <div className="summary-item">
-                           <span className="summary-label">Diamond Shape</span>
-                           <span className="summary-value">{val(leadData.diamondShape)}</span>
-                       </div>
-                       <div className="summary-item">
-                           <span className="summary-label">Carat Size</span>
-                           <span className="summary-value">{val(leadData.caratSize)}</span>
-                       </div>
-                       <div className="summary-item">
-                           <span className="summary-label">Price Range</span>
-                           <span className="summary-value">{val(leadData.priceRange)}</span>
-                       </div>
+                 <div className="summary-card">
+                    <h3 style={{ fontSize: '0.9rem', color: '#fff', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--glass-border)' }}>Client Profile</h3>
+                    <div className="detail-row">
+                       <span className="detail-label">Name</span>
+                       <span className="detail-value">{val(leadData.fullName)}</span>
+                    </div>
+                    <div className="detail-row">
+                       <span className="detail-label">Mobile</span>
+                       <span className="detail-value">{val(leadData.mobile)}</span>
+                    </div>
+                    <div className="detail-row">
+                       <span className="detail-label">Location</span>
+                       <span className="detail-value">{val(leadData.location)}</span>
+                    </div>
+                 </div>
+
+                 <div className="summary-card">
+                    <h3 style={{ fontSize: '0.9rem', color: '#fff', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--glass-border)' }}>Requirements</h3>
+                    <div className="detail-row">
+                       <span className="detail-label">Shape</span>
+                       <span className="detail-value">{val(leadData.diamondShape)}</span>
+                    </div>
+                    <div className="detail-row">
+                       <span className="detail-label">Carat</span>
+                       <span className="detail-value">{val(leadData.caratSize)}</span>
+                    </div>
+                    <div className="detail-row">
+                       <span className="detail-label">Budget</span>
+                       <span className="detail-value">{val(leadData.priceRange)}</span>
+                    </div>
+                 </div>
+                 
+                 {leadData.summary && (
+                   <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', fontSize: '0.85rem', color: '#ccc', lineHeight: '1.6', borderLeft: '3px solid #d4af37' }}>
+                      {leadData.summary}
                    </div>
-               </div>
-            </div>
+                 )}
+              </div>
 
-            <div className="bottom-actions">
-              <button 
-                onClick={onStartCall}
-                className="btn-secondary"
-              >
-                Start New Call
-              </button>
-            </div>
+              <div className="w-full pt-4">
+                 <button onClick={onStartCall} className="btn-glass">
+                    Start New Consultation
+                 </button>
+              </div>
+           </div>
         </div>
       );
   }
@@ -186,88 +167,67 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
   // RENDER: CONNECTED / CONNECTING (LIVE CALL)
   // -----------------------------------------------------------------------
   return (
-    <div className="phone-screen flex flex-col h-full">
-      {/* Background Decor */}
-      <div className="background-glow"></div>
+    <div className="h-full w-full relative">
+       <div className="bg-ambient"></div>
+       <div className="screen-container items-center justify-between">
+          
+          {/* Header */}
+          <div className="w-full flex flex-col items-center pt-8">
+             {status === 'connecting' ? (
+                <div className="live-indicator">Connecting...</div>
+             ) : (
+                <div className="live-indicator">
+                   <span className="live-dot"></span>
+                   {formatTime(duration)}
+                </div>
+             )}
+          </div>
 
-      {/* Header */}
-      <div className="call-header">
-         <div className="flex flex-col items-center">
-            {status === 'connecting' ? (
-                <span className="timer-badge" style={{ animation: 'pulse 1.5s infinite' }}>CONNECTING...</span>
-            ) : (
-                <>
-                    <span className="timer-badge">00:{formatTime(duration)}</span>
-                    <span className="hd-badge">
-                        <span className="hd-dot"></span>
-                        LIVE
-                    </span>
-                </>
-            )}
-         </div>
-      </div>
+          {/* Avatar & Visuals */}
+          <div className="flex-1 flex flex-col items-center justify-center w-full">
+             <div className={`avatar-ring ${isAiSpeaking ? 'speaking' : ''}`}>
+                <div className="speaking-wave"></div>
+                <div className="speaking-wave"></div>
+                <img 
+                  src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=400&h=400" 
+                  alt="Ananya" 
+                  className="avatar-image"
+                />
+             </div>
+             
+             <div className="text-center mt-6">
+                <h2 style={{ fontSize: '1.5rem', margin: 0, color: '#fff' }}>Ananya</h2>
+                <p style={{ color: '#d4af37', fontSize: '0.85rem', letterSpacing: '0.1em', marginTop: '0.5rem', textTransform: 'uppercase' }}>
+                   AI Sales Executive
+                </p>
+             </div>
 
-      {/* Main Avatar Area */}
-      <div className="main-avatar-area">
-         <div className="avatar-wrapper">
-            {/* Speaking Ripples */}
-            {isAiSpeaking && (
-                <>
-                    <div className="ripple"></div>
-                    <div className="ripple ripple-delay"></div>
-                </>
-            )}
-            
-            <div className="avatar-lg">
-                 <img 
-                    src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=400&h=400" 
-                    alt="Ananya"
-                 />
-            </div>
-         </div>
-         
-         <div className="text-center w-full px-4">
-            <h1 style={{ fontSize: '2rem', fontWeight: 700, color: 'white', marginBottom: '0.25rem', margin: 0 }}>Ananya</h1>
-            <p style={{ color: '#93c5fd', fontWeight: 500, margin: 0, fontSize: '0.9rem' }}>Bharat Diamond Connect</p>
-         </div>
+             {/* Minimalist Visualizer */}
+             <div className={`visualizer ${isAiSpeaking ? 'speaking' : ''}`}>
+                 <div className="v-bar" style={{ height: !isAiSpeaking ? `${Math.max(4, volume * 100)}px` : undefined }}></div>
+                 <div className="v-bar" style={{ height: !isAiSpeaking ? `${Math.max(4, volume * 80)}px` : undefined }}></div>
+                 <div className="v-bar" style={{ height: !isAiSpeaking ? `${Math.max(4, volume * 120)}px` : undefined }}></div>
+                 <div className="v-bar" style={{ height: !isAiSpeaking ? `${Math.max(4, volume * 90)}px` : undefined }}></div>
+                 <div className="v-bar" style={{ height: !isAiSpeaking ? `${Math.max(4, volume * 60)}px` : undefined }}></div>
+             </div>
+          </div>
 
-         {/* Audio Visualizer */}
-         <div className="visualizer-container">
-            {[...Array(5)].map((_, i) => (
-                <div 
-                    key={i} 
-                    className={`visualizer-bar ${isAiSpeaking ? 'speaking' : ''}`}
-                    style={{ 
-                        // If not speaking, use volume for subtle movement, otherwise animation handles it
-                        height: !isAiSpeaking ? `${Math.max(6, volume * 100 * (Math.random() + 0.5))}px` : undefined 
-                    }}
-                ></div>
-            ))}
-         </div>
-      </div>
+          {/* Controls */}
+          <div className="w-full pb-8 flex justify-center gap-6">
+             <button onClick={onEndCall} style={{ 
+                width: '64px', height: '64px', borderRadius: '50%', 
+                background: '#ef4444', border: 'none', color: 'white',
+                boxShadow: '0 8px 24px rgba(239, 68, 68, 0.4)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', transition: 'transform 0.2s'
+             }}>
+                <svg xmlns="http://www.w3.org/2000/svg" height="32" viewBox="0 -960 960 960" width="32" fill="currentColor">
+                   <path d="m256-120-40-120 160-200v-320h408v320L742-240 704-120H256Zm86-80h276l30-98-132-154v-320H444v320L314-298l28 98Z"/>
+                </svg>
+             </button>
+          </div>
 
-      {/* Controls */}
-      <div className="controls-area">
-         <div className="controls-row">
-            <button className="btn-control">
-                {/* Mute Icon */}
-                <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="M480-400q-50 0-85-35t-35-85v-240q0-50 35-85t85-35q50 0 85 35t35 85v240q0 50-35 85t-85 35Z"/></svg>
-            </button>
-
-            {/* End Call */}
-            <button 
-                onClick={onEndCall}
-                className="btn-end-call"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" height="32" viewBox="0 -960 960 960" width="32" fill="currentColor"><path d="m256-120-40-120 160-200v-320h408v320L742-240 704-120H256Zm86-80h276l30-98-132-154v-320H444v320L314-298l28 98Z"/></svg>
-            </button>
-
-             <button className="btn-control">
-                {/* Keypad Icon */}
-                <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h640q33 0 56.5 23.5T880-720v480q0 33-23.5 56.5T800-160H160Zm0-80h640v-480H160v480ZM160-240v-480 480Z"/></svg>
-            </button>
-         </div>
-      </div>
+       </div>
     </div>
   );
 };
