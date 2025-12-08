@@ -36,6 +36,24 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const getStatusText = (status: ConnectionStatus) => {
+    switch (status) {
+      case 'connecting': return 'Connecting...';
+      case 'connected': return 'Live Call';
+      case 'ended': return 'Call Ended';
+      case 'error': return 'Connection Failed';
+      case 'permission_denied': return 'Microphone Denied';
+      default: return 'Ready';
+    }
+  };
+
+  const getStatusColor = (status: ConnectionStatus) => {
+     if (status === 'connected') return '#4ade80';
+     if (status === 'connecting') return '#fbbf24';
+     if (status === 'error' || status === 'permission_denied') return '#ef4444';
+     return '#94a3b8';
+  };
+
   // State: Disconnected (Start Screen) or Error or Permission Denied
   if (status === 'disconnected' || status === 'error' || status === 'permission_denied') {
     return (
@@ -109,6 +127,13 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
 
                 <div>
                     <h4 style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.75rem' }}>Collected Information</h4>
+                    
+                    {leadData.summary && (
+                      <div style={{ backgroundColor: '#f0f9ff', padding: '0.75rem', borderRadius: '0.5rem', marginBottom: '1rem', fontSize: '0.875rem', color: '#334155', borderLeft: '3px solid #3b82f6' }}>
+                        {leadData.summary}
+                      </div>
+                    )}
+
                     <div className="summary-grid">
                         <div className="summary-item">
                             <span className="summary-label">Name</span>
@@ -121,7 +146,7 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
                         <div className="summary-item" style={{ gridColumn: 'span 2' }}>
                             <span className="summary-label">Requirements</span>
                             <span className="summary-value">
-                                {leadData.diamondShape || 'Any'} shape, {leadData.caratSize || 'Any'} ct
+                                {leadData.diamondShape || 'Any'} shape, {leadData.caratSize || 'Any'} ct, {leadData.location || ''}
                             </span>
                         </div>
                     </div>
@@ -184,18 +209,21 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
          <div className="text-center">
             <h1 style={{ fontSize: '1.875rem', fontWeight: 700, color: 'white', marginBottom: '0.5rem', margin: 0 }}>Ananya</h1>
             <p style={{ color: '#93c5fd', fontWeight: 500, margin: 0 }}>Bharat Diamond Connect</p>
+            {/* Status Indicator */}
+            <p style={{ color: getStatusColor(status), fontSize: '0.75rem', fontWeight: 600, marginTop: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {getStatusText(status)}
+            </p>
          </div>
 
-         {/* Audio Visualizer (Simple dots) */}
+         {/* Audio Visualizer */}
          <div className="visualizer-container">
             {[...Array(5)].map((_, i) => (
                 <div 
                     key={i} 
-                    className="visualizer-bar"
+                    className={`visualizer-bar ${isAiSpeaking ? 'speaking' : ''}`}
                     style={{ 
-                        height: isAiSpeaking 
-                            ? `${Math.random() * 24 + 8}px` 
-                            : `${Math.max(4, volume * 100 * (Math.random() + 0.5))}px`
+                        // If not speaking, use volume for subtle movement, otherwise animation handles it
+                        height: !isAiSpeaking ? `${Math.max(4, volume * 80 * (Math.random() + 0.5))}px` : undefined 
                     }}
                 ></div>
             ))}

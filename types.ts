@@ -5,6 +5,7 @@ export interface LeadData {
   diamondShape: string | null;
   priceRange: string | null;
   caratSize: string | null;
+  summary: string | null;
 }
 
 export const INITIAL_LEAD_DATA: LeadData = {
@@ -14,6 +15,7 @@ export const INITIAL_LEAD_DATA: LeadData = {
   diamondShape: null,
   priceRange: null,
   caratSize: null,
+  summary: null,
 };
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'ended' | 'error' | 'permission_denied';
