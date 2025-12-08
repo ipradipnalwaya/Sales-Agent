@@ -16,7 +16,7 @@ export const INITIAL_LEAD_DATA: LeadData = {
   caratSize: null,
 };
 
-export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'ended' | 'error';
+export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'ended' | 'error' | 'permission_denied';
 
 export interface LogMessage {
   role: 'user' | 'model' | 'system';

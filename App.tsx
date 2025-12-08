@@ -40,7 +40,6 @@ export default function App() {
 
   const connectToGemini = async () => {
     // Securely access the API key from the environment
-    // Do not alert or expose specific errors to the user UI regarding the key
     const apiKey = process.env.API_KEY;
     if (!apiKey) {
       console.error("Configuration Error: API_KEY is missing in the environment.");
@@ -53,9 +52,21 @@ export default function App() {
     addLog('system', 'Dialing...');
 
     try {
+      // Request microphone access specifically before setting up GenAI
+      try {
+        streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (micError: any) {
+        console.error("Microphone access denied:", micError);
+        if (micError.name === 'NotAllowedError' || micError.name === 'PermissionDeniedError') {
+          setStatus('permission_denied');
+        } else {
+          setStatus('error');
+        }
+        return; // Stop execution if mic fails
+      }
+
       const ai = new GoogleGenAI({ apiKey: apiKey });
       
-      streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
       outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
       

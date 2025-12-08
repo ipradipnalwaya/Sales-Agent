@@ -36,8 +36,8 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // State: Disconnected (Start Screen) or Error
-  if (status === 'disconnected' || status === 'error') {
+  // State: Disconnected (Start Screen) or Error or Permission Denied
+  if (status === 'disconnected' || status === 'error' || status === 'permission_denied') {
     return (
       <div className="screen-center">
         <div className="card-container">
@@ -48,7 +48,7 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
                     src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200&h=200" 
                     alt="Ananya"
                  />
-                 <div style={{ position: 'absolute', bottom: '4px', right: '4px', width: '1rem', height: '1rem', backgroundColor: status === 'error' ? '#ef4444' : '#22c55e', borderRadius: '50%', border: '2px solid #0f172a' }}></div>
+                 <div style={{ position: 'absolute', bottom: '4px', right: '4px', width: '1rem', height: '1rem', backgroundColor: (status === 'error' || status === 'permission_denied') ? '#ef4444' : '#22c55e', borderRadius: '50%', border: '2px solid #0f172a' }}></div>
               </div>
               <h2 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, zIndex: 10 }}>Ananya</h2>
               <p style={{ color: '#93c5fd', fontSize: '0.875rem', fontWeight: 500, margin: '0.25rem 0 0 0', zIndex: 10 }}>Sales Executive</p>
@@ -56,11 +56,19 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
            </div>
            
            <div className="card-body">
-              {status === 'error' ? (
+              {status === 'error' && (
                 <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '0.5rem', padding: '1rem', marginBottom: '1.5rem', color: '#b91c1c', fontSize: '0.875rem' }}>
                     <strong>Connection Failed.</strong> The system is temporarily unavailable. Please try again later.
                 </div>
-              ) : (
+              )}
+
+              {status === 'permission_denied' && (
+                <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '0.5rem', padding: '1rem', marginBottom: '1.5rem', color: '#c2410c', fontSize: '0.875rem' }}>
+                    <strong>Microphone Access Denied.</strong><br/> Please allow microphone permissions in your browser settings to start the call.
+                </div>
+              )}
+              
+              {status === 'disconnected' && (
                 <p style={{ textAlign: 'center', color: '#475569', lineHeight: 1.6, marginBottom: '2rem' }}>
                     Connect with our AI sales agent to explore our exclusive diamond inventory and get personalized assistance.
                 </p>
@@ -71,7 +79,7 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
                 className="btn-primary"
               >
                 <span style={{ fontSize: '1.5rem' }}>📞</span>
-                {status === 'error' ? 'Retry Call' : 'Start Demo Call'}
+                {status === 'permission_denied' ? 'Retry Permission' : status === 'error' ? 'Retry Call' : 'Start Demo Call'}
               </button>
            </div>
         </div>
