@@ -1,0 +1,7 @@
+{
+  "name": "DiamondSearch AI Agent",
+  "description": "A voice-activated B2B diamond marketplace assistant that proactively gathers search criteria using Gemini Live API.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
