@@ -58,7 +58,7 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
            <div className="card-body">
               {status === 'error' ? (
                 <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '0.5rem', padding: '1rem', marginBottom: '1.5rem', color: '#b91c1c', fontSize: '0.875rem' }}>
-                    <strong>Connection Failed.</strong> Please check your API key or network connection and try again.
+                    <strong>Connection Failed.</strong> The system is temporarily unavailable. Please try again later.
                 </div>
               ) : (
                 <p style={{ textAlign: 'center', color: '#475569', lineHeight: 1.6, marginBottom: '2rem' }}>

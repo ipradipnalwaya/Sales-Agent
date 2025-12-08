@@ -39,8 +39,12 @@ export default function App() {
   };
 
   const connectToGemini = async () => {
-    if (!process.env.API_KEY) {
-      alert("API Key not found in environment.");
+    // Securely access the API key from the environment
+    // Do not alert or expose specific errors to the user UI regarding the key
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
+      console.error("Configuration Error: API_KEY is missing in the environment.");
+      setStatus('error');
       return;
     }
 
@@ -49,7 +53,7 @@ export default function App() {
     addLog('system', 'Dialing...');
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: apiKey });
       
       streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
@@ -186,6 +190,7 @@ export default function App() {
       sessionPromiseRef.current = sessionPromise;
 
     } catch (e) {
+      console.error("Connection error", e);
       setStatus('error');
     }
   };
