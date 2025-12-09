@@ -49,7 +49,7 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
           
           {/* Top Branding */}
           <div className="flex-1 flex flex-col items-center justify-center text-center">
-            <div className="hero-image">
+            <div className="hero-image anim-float">
                <div className="hero-glow"></div>
                {/* Abstract Diamond Icon */}
                <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="#d4af37" strokeWidth="0.5">
@@ -62,28 +62,28 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
                </svg>
             </div>
             
-            <h1 className="brand-title">Bharat<br/>Diamond</h1>
-            <div className="brand-subtitle">Private Concierge</div>
+            <h1 className="brand-title anim-fade-up">Bharat<br/>Diamond</h1>
+            <div className="brand-subtitle anim-fade-up" style={{ animationDelay: '0.1s' }}>Private Concierge</div>
 
-            <p style={{ color: '#a1a1aa', marginTop: '2rem', maxWidth: '280px', fontWeight: 300 }}>
+            <p className="anim-fade-up" style={{ color: '#a1a1aa', marginTop: '2rem', maxWidth: '280px', fontWeight: 300, animationDelay: '0.2s' }}>
               Experience AI-driven diamond sourcing. Connect with Ananya for a personalized consultation.
             </p>
 
             {/* Error States */}
             {status === 'error' && (
-               <div style={{ marginTop: '2rem', padding: '0.75rem', background: 'var(--error-bg)', color: 'var(--error-text)', borderRadius: '12px', fontSize: '0.8rem' }}>
+               <div className="anim-fade-up" style={{ marginTop: '2rem', padding: '0.75rem', background: 'var(--error-bg)', color: 'var(--error-text)', borderRadius: '12px', fontSize: '0.8rem', animationDelay: '0.3s' }}>
                  System Temporarily Unavailable
                </div>
             )}
             {status === 'permission_denied' && (
-               <div style={{ marginTop: '2rem', padding: '0.75rem', background: 'var(--error-bg)', color: 'var(--error-text)', borderRadius: '12px', fontSize: '0.8rem' }}>
+               <div className="anim-fade-up" style={{ marginTop: '2rem', padding: '0.75rem', background: 'var(--error-bg)', color: 'var(--error-text)', borderRadius: '12px', fontSize: '0.8rem', animationDelay: '0.3s' }}>
                  Microphone Access Required
                </div>
             )}
           </div>
 
           {/* Bottom Action */}
-          <div className="w-full pt-6">
+          <div className="w-full pt-6 anim-fade-up" style={{ animationDelay: '0.4s' }}>
             <button onClick={onStartCall} className="btn-luxury">
               {status === 'permission_denied' ? 'Retry Access' : 'Initiate Consultation'}
             </button>
@@ -219,7 +219,8 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
                 background: '#ef4444', border: 'none', color: 'white',
                 boxShadow: '0 8px 24px rgba(239, 68, 68, 0.4)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', transition: 'transform 0.2s'
+                cursor: 'pointer', transition: 'transform 0.2s',
+                pointerEvents: 'auto', zIndex: 50
              }}>
                 <svg xmlns="http://www.w3.org/2000/svg" height="32" viewBox="0 -960 960 960" width="32" fill="currentColor">
                    <path d="m256-120-40-120 160-200v-320h408v320L742-240 704-120H256Zm86-80h276l30-98-132-154v-320H444v320L314-298l28 98Z"/>
