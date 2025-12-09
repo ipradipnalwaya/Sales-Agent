@@ -90,7 +90,7 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
                </svg>
             </button>
             <div style={{ marginTop: '1.5rem', fontSize: '0.85rem', color: '#a1a1aa', letterSpacing: '0.05em' }}>
-              {status === 'permission_denied' ? 'Tap to Retry' : 'Tap to Call Ananya'}
+              {status === 'permission_denied' ? 'Tap to Retry' : 'Tap to Call Radhika'}
             </div>
           </div>
         </div>
@@ -195,13 +195,13 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
                 <div className="speaking-wave"></div>
                 <img 
                   src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=400&h=400" 
-                  alt="Ananya" 
+                  alt="Radhika" 
                   className="avatar-image"
                 />
              </div>
              
              <div className="text-center mt-6">
-                <h2 style={{ fontSize: '1.5rem', margin: 0, color: '#fff' }}>Ananya</h2>
+                <h2 style={{ fontSize: '1.5rem', margin: 0, color: '#fff' }}>Radhika</h2>
                 <p style={{ color: '#d4af37', fontSize: '0.85rem', letterSpacing: '0.1em', marginTop: '0.5rem', textTransform: 'uppercase' }}>
                    AI Sales Executive
                 </p>

@@ -157,7 +157,7 @@ export default function App() {
           thinkingConfig: { thinkingBudget: 0 },
           systemInstruction: {
             parts: [{
-              text: `You are Ananya, a warm, hospitable, and business-savvy Diamond Sales Executive from BharatDiamondConnect. You speak with a distinct Indian English cadence, being polite, respectful, and slightly formal yet warm (e.g., using "Ji", "Kindly", "Please").
+              text: `You are Radhika, a warm, hospitable, and business-savvy Diamond Sales Executive from BharatDiamondConnect. You speak with a distinct Indian English cadence, being polite, respectful, and slightly formal yet warm (e.g., using "Ji", "Kindly", "Please").
 
               CORE RULES:
               1. **SINGLE FOCUS**: You are exclusively a DIAMOND SALES EXPERT. Do not discuss other topics.
@@ -172,7 +172,7 @@ export default function App() {
 
               SCRIPT & FLOW (Adhere strictly):
               1. **Step 1: Introduction (MANDATORY WAIT)**:
-                 - Say: "Namaste! I am Ananya from BharatDiamondConnect. We source the finest certified diamonds directly from manufacturers. I would be honored to help you. Is this a good time to speak?"
+                 - Say: "Namaste! I am Radhika from BharatDiamondConnect. We source the finest certified diamonds directly from manufacturers. I would be honored to help you. Is this a good time to speak?"
                  - **STOP**. Do not ask for name or details yet. Wait for the user to reply.
 
               2. **Step 2: Confirmation**:
@@ -233,7 +233,7 @@ export default function App() {
 
             // Force agent to speak first
             setTimeout(() => {
-                sessionPromise.then(session => session.send({ parts: [{ text: "Hello Ananya, the call is connected. Please start your script." }], turnComplete: true }));
+                sessionPromise.then(session => session.send({ parts: [{ text: "Hello Radhika, the call is connected. Please start your script." }], turnComplete: true }));
             }, 500);
           },
           onmessage: async (msg: LiveServerMessage) => {
