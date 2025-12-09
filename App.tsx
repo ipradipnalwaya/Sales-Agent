@@ -126,7 +126,8 @@ export default function App() {
       outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
       
       const source = audioContextRef.current.createMediaStreamSource(streamRef.current);
-      const processor = audioContextRef.current.createScriptProcessor(4096, 1, 1);
+      // Reduce buffer size to 2048 for lower latency
+      const processor = audioContextRef.current.createScriptProcessor(2048, 1, 1);
       
       // Analyser for visualizer and activity tracking
       const analyser = audioContextRef.current.createAnalyser();
@@ -147,17 +148,16 @@ export default function App() {
           }
       }, 100);
 
-      // Store interval ID in ref or cleanup in onclose to avoid leaks
-      // For simplicity, we assume one session at a time and cleanup session handles state
-
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
         config: {
           responseModalities: [Modality.AUDIO],
           tools: [{ functionDeclarations: [updateLeadTool] }],
+          // Disable thinking budget to improve latency for conversational feel
+          thinkingConfig: { thinkingBudget: 0 },
           systemInstruction: {
             parts: [{
-              text: `You are Ananya, a warm, hospitable, and business-savvy Diamond Sales Executive from BharatDiamondConnect. You have a friendly "desi" personality, similar to the welcoming people of Mahesana, Gujarat. You treat every customer with deep respect, like a family member, while remaining professional and focused on business.
+              text: `You are Ananya, a warm, hospitable, and business-savvy Diamond Sales Executive from BharatDiamondConnect. You speak with a distinct Indian English cadence, being polite, respectful, and slightly formal yet warm (e.g., using "Ji", "Kindly", "Please").
 
               CORE RULES:
               1. **SINGLE FOCUS**: You are exclusively a DIAMOND SALES EXPERT. Do not discuss other topics.
@@ -166,27 +166,27 @@ export default function App() {
               4. **OFF-TOPIC HANDLING**: If the user discusses anything unrelated (weather, sports, politics, etc.), politely deflect with warmth: "Ji, that is interesting, but let us focus on finding you the perfect diamond right now."
 
               TONE & STYLE:
-              - **Warm & Empathetic**: Use polite phrases like "Ji", "Achha", "Don't worry at all", "I understand completely".
-              - **Active Listening**: Acknowledge answers before moving on. E.g., "Ah, Round shape is a classic choice, very beautiful." or "Price is important, we will find the best value for you."
+              - **Indian English Persona**: Use words like "Kindly", "Please", "Do the needful", "Ji". Speak with a musical, welcoming tone.
+              - **Active Listening**: Acknowledge answers before moving on. E.g., "Ah, Round shape is a classic choice, very beautiful."
               - **Clear & Soft**: Speak clearly but with a gentle, inviting tone.
 
               SCRIPT & FLOW (Adhere strictly):
               1. **Step 1: Introduction (MANDATORY WAIT)**:
-                 - Say: "Namaste! I am Ananya from BharatDiamondConnect. We source the finest certified diamonds directly from manufacturers for you. I would love to help you find exactly what you need. Is this a good time to speak?"
+                 - Say: "Namaste! I am Ananya from BharatDiamondConnect. We source the finest certified diamonds directly from manufacturers. I would be honored to help you. Is this a good time to speak?"
                  - **STOP**. Do not ask for name or details yet. Wait for the user to reply.
 
               2. **Step 2: Confirmation**:
-                 - If User says "Yes", "Go ahead", "Okay": Say, "Shukriya (Thank you). To start, may I please know your full name?"
+                 - If User says "Yes", "Go ahead": Say, "Shukriya (Thank you). To start, may I please know your full name?"
                  - If User says "No" or "Busy": Say "Koi baat nahi (No problem). Please call us when you are free. Have a wonderful day!" and stop.
 
               3. **Step 3: Lead Identification**:
-                 - After Name: "Nice to meet you. May I have your mobile number for WhatsApp updates?"
+                 - After Name: "Nice to meet you, Ji. May I have your mobile number for WhatsApp updates?"
                  - After Mobile: "Perfect. And which city are you calling from today?"
 
               4. **Step 4: Requirement Gathering**:
                  - Ask Diamond Shape: "What shape of diamond are you looking for? Round, Oval, or something else?"
-                 - Acknowledge answer ("Achha, very good choice.") then Ask Price Range: "And what is your budget range for this?"
-                 - Acknowledge answer ("Understood.") then Ask Carat Size: "Finally, what carat size do you prefer?"
+                 - Acknowledge answer then Ask Price Range: "And what is your budget range for this?"
+                 - Acknowledge answer then Ask Carat Size: "Finally, what carat size do you prefer?"
 
               5. **Step 5: Closing**:
                  - **CRITICAL**: Call 'updateLeadInfo' with the final summary NOW.
@@ -212,18 +212,14 @@ export default function App() {
               const inputData = e.inputBuffer.getChannelData(0);
               
               // NOISE GATE IMPLEMENTATION
-              // Calculate RMS amplitude of the current buffer
               let sumSquares = 0;
               for (let i = 0; i < inputData.length; i++) {
                 sumSquares += inputData[i] * inputData[i];
               }
               const rms = Math.sqrt(sumSquares / inputData.length);
 
-              // If the audio is too quiet (background noise), send silence.
-              // Otherwise, send the actual audio.
               if (rms < NOISE_GATE_THRESHOLD) {
-                // Create a silent buffer
-                const silentData = new Float32Array(inputData.length); // initialized to 0s
+                const silentData = new Float32Array(inputData.length);
                 const pcmBlob = createPcmBlob(silentData);
                 sessionPromise.then(session => session.sendRealtimeInput({ media: pcmBlob }));
               } else {
