@@ -7,8 +7,10 @@ interface PhoneInterfaceProps {
   isAiSpeaking: boolean;
   onStartCall: (language: string) => void;
   onEndCall: () => void;
+  onReset: () => void;
   leadData: LeadData;
   volume: number;
+  toast: string | null;
 }
 
 const LANGUAGES = [
@@ -118,12 +120,15 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
   isAiSpeaking,
   onStartCall,
   onEndCall,
+  onReset,
   leadData,
-  volume
+  volume,
+  toast
 }) => {
   const [duration, setDuration] = useState(0);
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [showEndConfirm, setShowEndConfirm] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     let interval: any;
@@ -132,6 +137,7 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
     } else {
       setDuration(0);
       setShowEndConfirm(false);
+      setCopied(false);
     }
     return () => clearInterval(interval);
   }, [status]);
@@ -145,7 +151,8 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
   const getStatusText = () => {
       if (status === 'connecting') return 'Connecting...';
       if (isAiSpeaking) return 'Sanya Speaking...';
-      if (volume > 0.05) return 'Listening...';
+      // Ensure visual feedback matches the "gated" logic (volume set to 0 when AI speaks)
+      if (volume > 0.02) return 'Listening...';
       return 'Connected'; // Idle/Processing
   };
 
@@ -155,6 +162,21 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
   };
 
   const val = (v: string | null) => v || 'N/A';
+
+  const handleCopySummary = () => {
+    const summaryText = `SanyaGems Consultation
+Name: ${val(leadData.fullName)}
+Mobile: ${val(leadData.mobile)}
+Location: ${val(leadData.location)}
+Shape: ${val(leadData.diamondShape)}
+Carat: ${val(leadData.caratSize)}
+Budget: ${val(leadData.priceRange)}
+Summary: ${val(leadData.summary)}`;
+
+    navigator.clipboard.writeText(summaryText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   // -----------------------------------------------------------------------
   // RENDER: DISCONNECTED / ERROR / PERMISSION DENIED (START SCREEN)
@@ -270,7 +292,7 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
                  <div className="contact-box">
                     <div style={{ color: '#d4af37', fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Your Dedicated Dealership</div>
                     <div style={{ fontSize: '1.25rem', fontFamily: 'Playfair Display', color: '#fff' }}>SanyaGems</div>
-                    <div style={{ fontSize: '1.1rem', marginTop: '0.25rem', color: '#fff', fontWeight: 600 }}>955 955 001</div>
+                    <div style={{ fontSize: '1.1rem', marginTop: '0.25rem', color: '#fff', fontWeight: 600 }}>955 955 789</div>
                  </div>
 
                  <div className="summary-card">
@@ -306,14 +328,27 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
                  </div>
                  
                  {leadData.summary && (
-                   <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', fontSize: '0.85rem', color: '#ccc', lineHeight: '1.6', borderLeft: '3px solid #d4af37' }}>
-                      {leadData.summary}
+                   <div style={{ marginTop: '1rem' }}>
+                       <h3 style={{ fontSize: '0.8rem', color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Consultation Summary</h3>
+                       <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', fontSize: '0.85rem', color: '#ccc', lineHeight: '1.6', borderLeft: '3px solid #d4af37' }}>
+                          {leadData.summary}
+                       </div>
                    </div>
                  )}
               </div>
 
-              <div className="w-full pt-4">
-                 <button onClick={() => onStartCall(selectedLanguage)} className="btn-glass">
+              <div className="w-full pt-4 flex flex-col gap-3">
+                 <button 
+                    onClick={handleCopySummary} 
+                    className="btn-glass"
+                    style={{ 
+                        background: copied ? 'rgba(16, 185, 129, 0.2)' : undefined,
+                        borderColor: copied ? 'var(--success)' : undefined
+                    }}
+                 >
+                    {copied ? 'Copied to Clipboard' : 'Copy Summary to Clipboard'}
+                 </button>
+                 <button onClick={onReset} className="btn-glass">
                     Start New Consultation
                  </button>
               </div>
@@ -369,11 +404,16 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
              )}
           </div>
 
+          {/* Toast Notification */}
+          {toast && (
+            <div className="toast-container">
+                <div className="toast-message">{toast}</div>
+            </div>
+          )}
+
           {/* Avatar & Visuals */}
           <div className="flex-1 flex flex-col items-center justify-center w-full">
              <div className={`avatar-ring ${isAiSpeaking ? 'speaking' : ''}`}>
-                <div className="speaking-wave"></div>
-                <div className="speaking-wave"></div>
                 <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '4px solid #000', overflow: 'hidden' }}>
                     <AgentAvatar isSpeaking={isAiSpeaking} className="w-full h-full transform scale-90" />
                 </div>
@@ -386,13 +426,19 @@ export const PhoneInterface: React.FC<PhoneInterfaceProps> = ({
                 </p>
              </div>
 
-             {/* Minimalist Visualizer */}
-             <div className={`visualizer ${isAiSpeaking ? 'speaking' : ''}`}>
-                 <div className="v-bar" style={{ height: !isAiSpeaking ? `${Math.max(4, volume * 100)}px` : undefined }}></div>
-                 <div className="v-bar" style={{ height: !isAiSpeaking ? `${Math.max(4, volume * 80)}px` : undefined }}></div>
-                 <div className="v-bar" style={{ height: !isAiSpeaking ? `${Math.max(4, volume * 120)}px` : undefined }}></div>
-                 <div className="v-bar" style={{ height: !isAiSpeaking ? `${Math.max(4, volume * 90)}px` : undefined }}></div>
-                 <div className="v-bar" style={{ height: !isAiSpeaking ? `${Math.max(4, volume * 60)}px` : undefined }}></div>
+             {/* Dynamic Waveform Visualizer */}
+             <div className={`visualizer ${isAiSpeaking ? 'speaking' : 'listening'}`}>
+                 {/* Generate mirrored bars for wave effect. Middle (index 2) is tallest. */}
+                 {[0.4, 0.7, 1.0, 0.7, 0.4].map((scale, i) => (
+                    <div 
+                        key={i} 
+                        className="v-bar" 
+                        style={{ 
+                            height: isAiSpeaking ? undefined : `${Math.max(6, volume * 150 * scale)}px`,
+                            animationDelay: isAiSpeaking ? `${i * 0.1}s` : undefined
+                        }}
+                    ></div>
+                 ))}
              </div>
           </div>
 

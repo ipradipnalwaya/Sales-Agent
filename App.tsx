@@ -6,7 +6,7 @@ import { base64ToUint8Array, createPcmBlob, decodeAudioData, playFeedbackTone } 
 
 const updateLeadTool: FunctionDeclaration = {
   name: 'updateLeadInfo',
-  description: 'Updates the user lead information during the call.',
+  description: 'Updates the user lead information during the call. Call this whenever new information is provided.',
   parameters: {
     type: Type.OBJECT,
     properties: {
@@ -16,13 +16,22 @@ const updateLeadTool: FunctionDeclaration = {
       diamondShape: { type: Type.STRING, description: 'Preferred diamond shape e.g. Round, Pear' },
       priceRange: { type: Type.STRING, description: 'Budget/Price range' },
       caratSize: { type: Type.STRING, description: 'Carat size preference' },
-      summary: { type: Type.STRING, description: 'A final comprehensive summary of the call details and status.' },
+      summary: { type: Type.STRING, description: 'A final comprehensive summary of the specific diamond requirements discussed.' },
     },
   },
 };
 
-// Lower threshold for better sensitivity (0.01 - 0.02 is usually good for voice)
-const NOISE_GATE_THRESHOLD = 0.02;
+const endSessionTool: FunctionDeclaration = {
+  name: 'endSession',
+  description: 'Ends the consultation session. Call this ONLY after saying goodbye and ensuring all details are captured.',
+  parameters: {
+    type: Type.OBJECT,
+    properties: {},
+  },
+};
+
+// Increased threshold to 0.04 to strictly ignore background noise and focus on loud voice.
+const NOISE_GATE_THRESHOLD = 0.04;
 
 export default function App() {
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
@@ -31,6 +40,7 @@ export default function App() {
   const [volume, setVolume] = useState(0);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [logs, setLogs] = useState<LogMessage[]>([]);
+  const [toast, setToast] = useState<string | null>(null);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const outputAudioContextRef = useRef<AudioContext | null>(null);
@@ -39,10 +49,19 @@ export default function App() {
   const nextStartTimeRef = useRef<number>(0);
   const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   
-  // Auto-disconnect refs
+  // Audio Queue Management for smoother playback
+  const audioQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const isPlayingRef = useRef<boolean>(false);
+  const speechEndTimeoutRef = useRef<any>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const volumeIntervalRef = useRef<any>(null);
+  
+  // Auto-disconnect and Session control
   const lastActivityRef = useRef<number>(Date.now());
   const statusRef = useRef<ConnectionStatus>('disconnected');
   const isAiSpeakingRef = useRef<boolean>(false);
+  const toastTimeoutRef = useRef<any>(null);
+  const isSessionEndingRef = useRef<boolean>(false);
 
   // Sync refs with state
   useEffect(() => { statusRef.current = status; }, [status]);
@@ -50,6 +69,74 @@ export default function App() {
 
   const addLog = (role: 'user' | 'model' | 'system', text: string) => {
     setLogs(prev => [...prev, { role, text, timestamp: new Date() }]);
+  };
+
+  const showToast = (message: string) => {
+    setToast(message);
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    toastTimeoutRef.current = setTimeout(() => setToast(null), 3000);
+  };
+
+  const cleanupSession = async () => {
+    if (sessionPromiseRef.current) {
+      try {
+        const session = await sessionPromiseRef.current;
+        session.close();
+      } catch (e) {
+        console.error("Error closing session", e);
+      }
+      sessionPromiseRef.current = null;
+    }
+
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+
+    if (outputAudioContextRef.current) {
+      outputAudioContextRef.current.close();
+      outputAudioContextRef.current = null;
+    }
+
+    if (volumeIntervalRef.current) {
+      clearInterval(volumeIntervalRef.current);
+      volumeIntervalRef.current = null;
+    }
+    
+    analyserRef.current = null;
+
+    sourcesRef.current.forEach(source => source.stop());
+    sourcesRef.current.clear();
+    nextStartTimeRef.current = 0;
+    isPlayingRef.current = false;
+    setIsAiSpeaking(false);
+    
+    if (speechEndTimeoutRef.current) {
+        clearTimeout(speechEndTimeoutRef.current);
+        speechEndTimeoutRef.current = null;
+    }
+  };
+
+  const endCall = async () => {
+    setStatus('ended');
+    await cleanupSession();
+    // Play end tone using a temporary context since the main one is closed
+    const tempCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    playFeedbackTone(tempCtx, 'end');
+    // Close temp context after short delay
+    setTimeout(() => tempCtx.close(), 1000);
+  };
+
+  // Reset to initial state for a fresh start
+  const resetApp = () => {
+    setStatus('disconnected');
+    setLeadData(INITIAL_LEAD_DATA);
+    setLogs([]);
   };
 
   // Idle Timer Effect
@@ -61,7 +148,8 @@ export default function App() {
         lastActivityRef.current = now;
         return;
       }
-      if (now - lastActivityRef.current > 60000) { // 60s silence timeout
+      // Changed from 60000 (60s) to 10000 (10s)
+      if (now - lastActivityRef.current > 10000) { 
         console.log("Auto-disconnecting due to silence.");
         endCall();
       }
@@ -75,6 +163,7 @@ export default function App() {
     }
 
     setActiveLanguage(selectedLanguage);
+    isSessionEndingRef.current = false;
 
     const apiKey = process.env.API_KEY;
     if (!apiKey) {
@@ -122,18 +211,21 @@ export default function App() {
       const processor = audioContextRef.current.createScriptProcessor(2048, 1, 1);
       
       const analyser = audioContextRef.current.createAnalyser();
+      analyserRef.current = analyser;
       source.connect(analyser);
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
       
-      const volInterval = setInterval(() => {
-          if (!analyser) return;
-          analyser.getByteFrequencyData(dataArray);
+      volumeIntervalRef.current = setInterval(() => {
+          if (!analyserRef.current) return;
+          analyserRef.current.getByteFrequencyData(dataArray);
           let sum = 0;
           for(let i=0; i<dataArray.length; i++) sum += dataArray[i];
           const avgVol = sum / dataArray.length / 128;
-          setVolume(avgVol);
+          
+          // Force visual volume to 0 if AI is speaking (visual feedback for "mic muted")
+          setVolume(isAiSpeakingRef.current ? 0 : avgVol);
 
-          if (avgVol > NOISE_GATE_THRESHOLD) {
+          if (avgVol > NOISE_GATE_THRESHOLD && !isAiSpeakingRef.current) {
              lastActivityRef.current = Date.now();
           }
       }, 100);
@@ -142,31 +234,53 @@ export default function App() {
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
         config: {
           responseModalities: [Modality.AUDIO],
-          tools: [{ functionDeclarations: [updateLeadTool] }],
-          thinkingConfig: { thinkingBudget: 0 },
+          tools: [{ functionDeclarations: [updateLeadTool, endSessionTool] }],
           systemInstruction: {
             parts: [{
               text: `You are Sanya, a Senior Diamond Sales Executive from SanyaGems.
               
               SELECTED LANGUAGE: ${selectedLanguage}
               
-              CRITICAL INSTRUCTIONS:
-              1. **LANGUAGE MANDATE**: You MUST speak ONLY in ${selectedLanguage} throughout this entire session. Do not switch languages unless explicitly asked.
-              2. **IMMEDIATE START**: As soon as the connection opens, greet the user in ${selectedLanguage}. Introduce yourself and explain how you can help.
-              3. **ROLE**: You are exclusively a DIAMOND SALES EXPERT. Be professional, warm, and sophisticated.
-              4. **NOISE FILTER**: Ignore faint background noises.
-              5. **SUMMARY**: Call 'updateLeadInfo' with a summary before saying goodbye.
+              *** INSTRUCTIONS ***
+              1. **IMMEDIATE ACTION**: Start speaking immediately. Do NOT wait for user input.
+              2. **LANGUAGE**: Speak STRICTLY and ONLY in ${selectedLanguage}. Do not switch languages unless explicitly asked to translate.
+              3. **PERSONA**: Real human executive. Warm, professional, efficient. Use fillers ("I see", "Okay", "Right") naturally.
               
-              SCRIPT FLOW:
-              1. **Introduction**: "Namaste! I am Sanya from SanyaGems. I specialize in sourcing exquisite diamonds for our exclusive clients. How may I assist you in finding your perfect gem today?" (Translate this concept to ${selectedLanguage}).
-              2. **Gather Info**: Ask for their name if not provided, then move to requirements.
-              3. **Requirements**: Discuss Shape, Budget, and Carat size.
-              4. **Closing**: Call 'updateLeadInfo', then say goodbye.
+              *** STRICT DATA COLLECTION STEPS ***
+              Ask ONE QUESTION AT A TIME. Wait for the answer. Do not combine steps.
+              
+              Step 1: **INTRO & NAME**
+                 - "Namaste! I am Sanya from SanyaGems. To begin your consultation, may I have your name please?"
+              
+              Step 2: **MOBILE NUMBER**
+                 - "Thank you. Could you please share your mobile number?"
+                 
+              Step 3: **LOCATION**
+                 - "And which city are you calling from?"
+                 
+              Step 4: **DIAMOND SHAPE**
+                 - "Great. Let's find your perfect diamond. First, what Shape are you looking for? (e.g. Round, Oval, Pear)"
+                 
+              Step 5: **CARAT SIZE**
+                 - "Noted. And what Carat size do you have in mind?"
+                 
+              Step 6: **BUDGET**
+                 - "Understood. Finally, what is your approximate Budget for this stone?"
+                 
+              Step 7: **SUMMARY & CLOSE**
+                 - Summarize strictly: "I have noted: [Shape] diamond, [Carat] carat, around [Budget]."
+                 - "I will check our inventory and WhatsApp you the options shortly."
+                 - "If you need immediate assistance, please call our dealership at 955 955 789. Thank you!"
+                 - **CRITICAL**: IMMEDIATELY call the 'endSession' tool after saying goodbye. Do not wait for user confirmation after goodbye.
+                 
+              *** DATA HANDLING ***
+              - Call 'updateLeadInfo' AFTER EACH ANSWER to save the details immediately.
+              - Ensure the 'summary' field is populated at the end.
               ` 
             }]
           },
           speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } }
+            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } }
           }
         },
         callbacks: {
@@ -178,6 +292,12 @@ export default function App() {
             processor.onaudioprocess = (e) => {
               const inputData = e.inputBuffer.getChannelData(0);
               
+              // STRICT HALF-DUPLEX LOGIC:
+              // If AI is speaking, completely ignore microphone input (send silence or nothing).
+              if (isAiSpeakingRef.current) {
+                 return; 
+              }
+              
               let sumSquares = 0;
               for (let i = 0; i < inputData.length; i++) {
                 sumSquares += inputData[i] * inputData[i];
@@ -185,12 +305,12 @@ export default function App() {
               const rms = Math.sqrt(sumSquares / inputData.length);
 
               if (rms < NOISE_GATE_THRESHOLD) {
-                // Send silence (zeros) if below threshold to save bandwidth and help model's own VAD
-                // distinguish silence from background noise.
+                // Background noise: Send silence to model
                 const silentData = new Float32Array(inputData.length);
                 const pcmBlob = createPcmBlob(silentData);
                 sessionPromise.then(session => session.sendRealtimeInput({ media: pcmBlob }));
               } else {
+                // Loud voice: Send actual audio
                 const pcmBlob = createPcmBlob(inputData);
                 sessionPromise.then(session => session.sendRealtimeInput({ media: pcmBlob }));
               }
@@ -198,12 +318,6 @@ export default function App() {
             
             source.connect(processor);
             processor.connect(audioContextRef.current!.destination);
-
-            // Trigger immediate greeting without delay
-            sessionPromise.then(session => session.send({ 
-                parts: [{ text: `(System: The user has connected. IMMEDIATELY greet them in ${selectedLanguage}. Say "Namaste, I am Sanya from SanyaGems" and ask how you can help them find a diamond.)` }], 
-                turnComplete: true 
-            }));
           },
           onmessage: async (msg: LiveServerMessage) => {
             if (msg.toolCall) {
@@ -211,6 +325,20 @@ export default function App() {
                 if (fc.name === 'updateLeadInfo') {
                   const args = fc.args as any;
                   setLeadData(prev => ({ ...prev, ...args }));
+                  
+                  // Format args for toast
+                  const keyMap: Record<string, string> = {
+                      fullName: 'Name', mobile: 'Mobile', location: 'City',
+                      diamondShape: 'Shape', priceRange: 'Budget', caratSize: 'Carat',
+                      summary: 'Summary'
+                  };
+                  const updates = Object.entries(args)
+                      .filter(([k, v]) => v && k !== 'summary')
+                      .map(([k, v]) => `${keyMap[k] || k}: ${v}`)
+                      .join(' | ');
+
+                  if (updates) showToast(`Saved: ${updates}`);
+
                   sessionPromise.then(session => session.sendToolResponse({
                     functionResponses: {
                       id: fc.id,
@@ -218,119 +346,118 @@ export default function App() {
                       response: { result: 'Lead info updated' }
                     }
                   }));
+                } else if (fc.name === 'endSession') {
+                   showToast("Wrapping up consultation...");
+                   isSessionEndingRef.current = true;
+                   
+                   // Respond to the tool
+                   sessionPromise.then(session => session.sendToolResponse({
+                    functionResponses: {
+                      id: fc.id,
+                      name: fc.name,
+                      response: { result: 'Session ending' }
+                    }
+                  }));
+
+                  // If not speaking, end immediately. If speaking, onended will handle it.
+                  if (!isPlayingRef.current) {
+                    setTimeout(() => endCall(), 1000); 
+                  }
                 }
               }
             }
 
             const audioData = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
-            if (audioData && outputAudioContextRef.current) {
-              const outputAudioCtx = outputAudioContextRef.current;
-              // Ensure time is monotonic
-              if (nextStartTimeRef.current < outputAudioCtx.currentTime) {
-                nextStartTimeRef.current = outputAudioCtx.currentTime;
-              }
+            if (audioData) {
+              audioQueueRef.current = audioQueueRef.current.then(async () => {
+                if (!outputAudioContextRef.current) return;
+                const outputAudioCtx = outputAudioContextRef.current;
+                
+                try {
+                  const buffer = await decodeAudioData(base64ToUint8Array(audioData), outputAudioCtx);
+                  
+                  if (nextStartTimeRef.current < outputAudioCtx.currentTime) {
+                    nextStartTimeRef.current = outputAudioCtx.currentTime;
+                  }
 
-              try {
-                const buffer = await decodeAudioData(base64ToUint8Array(audioData), outputAudioCtx);
-                const source = outputAudioCtx.createBufferSource();
-                source.buffer = buffer;
-                source.connect(outputAudioCtx.destination);
-                
-                if (sourcesRef.current.size === 0) {
+                  if (!isPlayingRef.current) {
+                    if (speechEndTimeoutRef.current) {
+                      clearTimeout(speechEndTimeoutRef.current);
+                      speechEndTimeoutRef.current = null;
+                    }
+                    
                     playFeedbackTone(outputAudioCtx, 'start');
+                    isPlayingRef.current = true;
                     setIsAiSpeaking(true);
-                }
-                
-                source.start(nextStartTimeRef.current);
-                nextStartTimeRef.current += buffer.duration;
-                sourcesRef.current.add(source);
-                
-                source.onended = () => {
+                  }
+
+                  const source = outputAudioCtx.createBufferSource();
+                  source.buffer = buffer;
+                  source.connect(outputAudioCtx.destination);
+                  
+                  source.onended = () => {
                     sourcesRef.current.delete(source);
                     if (sourcesRef.current.size === 0) {
-                        // Small delay to prevent flickering if next chunk comes immediately
-                        setTimeout(() => {
-                            if (sourcesRef.current.size === 0) {
-                                playFeedbackTone(outputAudioCtx, 'end');
-                                setIsAiSpeaking(false);
+                        // Debounce the "stop speaking" state to avoid flickering between chunks
+                        speechEndTimeoutRef.current = setTimeout(() => {
+                            setIsAiSpeaking(false);
+                            isPlayingRef.current = false;
+                            
+                            // Check if the session was marked to end by the model
+                            if (isSessionEndingRef.current) {
+                                endCall();
                             }
-                        }, 50);
+                        }, 500);
                     }
-                };
-              } catch (e) {
-                console.error("Audio decode error", e);
-              }
+                  };
+
+                  source.start(nextStartTimeRef.current);
+                  nextStartTimeRef.current += buffer.duration;
+                  sourcesRef.current.add(source);
+                  
+                } catch (err) {
+                   console.error("Audio decoding error:", err);
+                }
+              });
             }
           },
-          onclose: () => {
-            console.log("Session closed from server");
-            setStatus('ended');
-            setIsAiSpeaking(false);
-            clearInterval(volInterval);
-          },
-          onerror: () => {
-            console.log("Session error");
+          onerror: (e) => {
+            console.error("Session error:", e);
             setStatus('error');
+            cleanupSession();
+          },
+          onclose: (e) => {
+            console.log("Session closed", e);
+            if (statusRef.current === 'connected') {
+                setStatus('ended');
+            }
           }
         }
       });
       sessionPromiseRef.current = sessionPromise;
 
-    } catch (e) {
-      console.error("Connection error", e);
+    } catch (error) {
+      console.error("Connection failed:", error);
       setStatus('error');
+      cleanupSession();
     }
-  };
-
-  const cleanupSession = async () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    
-    // Proper cleanup of AudioContexts
-    if (audioContextRef.current) {
-      if (audioContextRef.current.state !== 'closed') {
-        try { await audioContextRef.current.close(); } catch(e) {}
-      }
-      audioContextRef.current = null;
-    }
-    if (outputAudioContextRef.current) {
-      if (outputAudioContextRef.current.state !== 'closed') {
-        try { await outputAudioContextRef.current.close(); } catch(e) {}
-      }
-      outputAudioContextRef.current = null;
-    }
-    
-    sessionPromiseRef.current = null;
-    sourcesRef.current.clear();
-  };
-
-  const endCall = async () => {
-    await cleanupSession();
-    setStatus('ended');
-  };
-
-  const restart = async () => {
-      await cleanupSession();
-      setLeadData(INITIAL_LEAD_DATA);
-      setIsAiSpeaking(false);
-      setStatus('disconnected'); // Reset to Start Screen
   };
 
   return (
     <div className="app-container">
-        <div className="mobile-frame">
-          <PhoneInterface 
-              status={status === 'ended' ? 'ended' : status}
-              activeLanguage={activeLanguage}
-              isAiSpeaking={isAiSpeaking}
-              onStartCall={status === 'ended' ? restart : connectToGemini}
-              onEndCall={endCall}
-              leadData={leadData}
-              volume={volume}
-          />
-        </div>
+      <div className="mobile-frame">
+        <PhoneInterface
+          status={status}
+          activeLanguage={activeLanguage}
+          isAiSpeaking={isAiSpeaking}
+          onStartCall={connectToGemini}
+          onEndCall={endCall}
+          onReset={resetApp}
+          leadData={leadData}
+          volume={volume}
+          toast={toast}
+        />
+      </div>
     </div>
   );
 }

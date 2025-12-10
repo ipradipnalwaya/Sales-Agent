@@ -262,6 +262,7 @@
         background: linear-gradient(135deg, rgba(212,175,55,0.5), transparent);
         position: relative;
         margin-bottom: 2rem;
+        transition: all 0.3s ease;
       }
       
       .avatar-image {
@@ -287,25 +288,44 @@
       }
       .speaking .speaking-wave:nth-child(2) { animation-delay: 0.5s; }
 
+      /* Avatar Glow Animation for AI Speaking */
+      @keyframes pulse-gold-glow {
+        0% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.4); border-color: rgba(212, 175, 55, 0.6); }
+        50% { box-shadow: 0 0 20px 10px rgba(212, 175, 55, 0.2); border-color: rgba(212, 175, 55, 1); }
+        100% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.4); border-color: rgba(212, 175, 55, 0.6); }
+      }
+      
+      .avatar-ring.speaking {
+        animation: pulse-gold-glow 2s infinite ease-in-out;
+        border: 2px solid var(--gold-primary);
+      }
+
       /* Visualizer */
       .visualizer {
         display: flex;
-        gap: 4px;
-        height: 40px;
+        gap: 6px;
+        height: 48px;
         align-items: center;
         justify-content: center;
         margin-top: 2rem;
+        min-width: 120px;
       }
       .v-bar {
-        width: 3px;
+        width: 6px;
         background: var(--gold-primary);
         border-radius: 99px;
-        height: 4px;
-        transition: height 0.1s ease;
+        height: 6px;
+        transition: height 0.1s ease-out;
+        opacity: 0.5;
+      }
+      .visualizer.speaking .v-bar {
+        animation: eq 0.5s infinite ease-in-out;
         opacity: 0.8;
       }
-      .speaking .v-bar {
-        animation: eq 0.6s infinite ease-in-out;
+      .visualizer.listening .v-bar {
+        background: var(--gold-light);
+        opacity: 1;
+        box-shadow: 0 0 8px rgba(212, 175, 55, 0.5);
       }
 
       /* End Screen */
@@ -346,6 +366,35 @@
         margin-bottom: 2rem;
       }
 
+      /* Toast Notification */
+      .toast-container {
+        position: absolute;
+        top: 90px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 100;
+        width: 90%;
+        display: flex;
+        justify-content: center;
+        pointer-events: none;
+      }
+      .toast-message {
+        background: rgba(10, 10, 10, 0.85);
+        border: 1px solid var(--gold-primary);
+        color: var(--gold-light);
+        padding: 8px 20px;
+        border-radius: 99px;
+        font-size: 0.85rem;
+        backdrop-filter: blur(8px);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        animation: slideDownFade 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        text-align: center;
+        max-width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
       /* Animations */
       @keyframes pulse-slow {
         0%, 100% { opacity: 0.4; transform: scale(1); }
@@ -357,8 +406,8 @@
         100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
       }
       @keyframes eq {
-        0%, 100% { height: 6px; }
-        50% { height: 24px; }
+        0%, 100% { height: 8px; }
+        50% { height: 32px; }
       }
       @keyframes float {
         0%, 100% { transform: translateY(0); }
@@ -373,12 +422,10 @@
         70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(212, 175, 55, 0); }
         100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(212, 175, 55, 0); }
       }
-
-      .v-bar:nth-child(1) { animation-delay: 0s; }
-      .v-bar:nth-child(2) { animation-delay: 0.1s; }
-      .v-bar:nth-child(3) { animation-delay: 0.2s; }
-      .v-bar:nth-child(4) { animation-delay: 0.1s; }
-      .v-bar:nth-child(5) { animation-delay: 0s; }
+      @keyframes slideDownFade {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
 
       .anim-float { animation: float 6s ease-in-out infinite; }
       .anim-fade-up { animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; opacity: 0; }
