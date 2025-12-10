@@ -1,6 +1,6 @@
 {
-  "name": "DiamondSearch AI Agent",
-  "description": "A voice-activated B2B diamond marketplace assistant that proactively gathers search criteria using Gemini Live API.",
+  "name": "SanyaGems",
+  "description": "A multi-lingual voice-activated B2B diamond marketplace assistant.",
   "requestFramePermissions": [
     "microphone"
   ]

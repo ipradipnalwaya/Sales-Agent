@@ -21,11 +21,12 @@ const updateLeadTool: FunctionDeclaration = {
   },
 };
 
-// Threshold for the noise gate. Increased to 0.05 to only listen to louder voices.
-const NOISE_GATE_THRESHOLD = 0.05;
+// Lower threshold for better sensitivity (0.01 - 0.02 is usually good for voice)
+const NOISE_GATE_THRESHOLD = 0.02;
 
 export default function App() {
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
+  const [activeLanguage, setActiveLanguage] = useState<string>('English');
   const [leadData, setLeadData] = useState<LeadData>(INITIAL_LEAD_DATA);
   const [volume, setVolume] = useState(0);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
@@ -43,7 +44,7 @@ export default function App() {
   const statusRef = useRef<ConnectionStatus>('disconnected');
   const isAiSpeakingRef = useRef<boolean>(false);
 
-  // Sync refs with state for use in intervals
+  // Sync refs with state
   useEffect(() => { statusRef.current = status; }, [status]);
   useEffect(() => { isAiSpeakingRef.current = isAiSpeaking; }, [isAiSpeaking]);
 
@@ -54,40 +55,30 @@ export default function App() {
   // Idle Timer Effect
   useEffect(() => {
     const idleCheckInterval = setInterval(() => {
-      // Only check if connected
       if (statusRef.current !== 'connected') return;
-
       const now = Date.now();
-      const timeSinceLastActivity = now - lastActivityRef.current;
-
-      // If AI is speaking, reset timer (activity is ongoing)
       if (isAiSpeakingRef.current) {
         lastActivityRef.current = now;
         return;
       }
-
-      // If silence for > 5 seconds, disconnect
-      if (timeSinceLastActivity > 5000) {
+      if (now - lastActivityRef.current > 60000) { // 60s silence timeout
         console.log("Auto-disconnecting due to silence.");
         endCall();
       }
     }, 1000);
-
     return () => clearInterval(idleCheckInterval);
   }, []);
 
-  const connectToGemini = async () => {
-    // SINGLE SESSION ENFORCEMENT:
-    // If a session exists or we are in a connected/connecting state, clean up first.
+  const connectToGemini = async (selectedLanguage: string) => {
     if (sessionPromiseRef.current || status === 'connected' || status === 'connecting') {
-      console.log("Existing session detected. Cleaning up before new connection.");
       await cleanupSession();
     }
 
-    // Securely access the API key from the environment
+    setActiveLanguage(selectedLanguage);
+
     const apiKey = process.env.API_KEY;
     if (!apiKey) {
-      console.error("Configuration Error: API_KEY is missing in the environment.");
+      console.error("Configuration Error: API_KEY is missing.");
       setStatus('error');
       return;
     }
@@ -98,7 +89,6 @@ export default function App() {
     lastActivityRef.current = Date.now();
 
     try {
-      // Request microphone access with strict audio constraints for voice isolation
       try {
         streamRef.current = await navigator.mediaDevices.getUserMedia({ 
           audio: {
@@ -111,25 +101,26 @@ export default function App() {
         });
       } catch (micError: any) {
         console.error("Microphone access denied:", micError);
-        if (micError.name === 'NotAllowedError' || micError.name === 'PermissionDeniedError') {
-          setStatus('permission_denied');
-        } else {
-          setStatus('error');
-        }
-        return; // Stop execution if mic fails
+        setStatus(micError.name === 'NotAllowedError' ? 'permission_denied' : 'error');
+        return;
       }
 
       const ai = new GoogleGenAI({ apiKey: apiKey });
       
-      // Initialize Audio Contexts
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-      outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+      // Initialize Audio Contexts with interactive latency hint
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ 
+        sampleRate: 16000, 
+        latencyHint: 'interactive' 
+      });
+      outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ 
+        sampleRate: 24000, 
+        latencyHint: 'interactive' 
+      });
       
       const source = audioContextRef.current.createMediaStreamSource(streamRef.current);
-      // Reduce buffer size to 2048 for lower latency
+      // 2048 buffer size = ~128ms latency at 16kHz. Good balance.
       const processor = audioContextRef.current.createScriptProcessor(2048, 1, 1);
       
-      // Analyser for visualizer and activity tracking
       const analyser = audioContextRef.current.createAnalyser();
       source.connect(analyser);
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
@@ -142,7 +133,6 @@ export default function App() {
           const avgVol = sum / dataArray.length / 128;
           setVolume(avgVol);
 
-          // Update activity only if user is speaking loudly enough (noise gate)
           if (avgVol > NOISE_GATE_THRESHOLD) {
              lastActivityRef.current = Date.now();
           }
@@ -153,49 +143,26 @@ export default function App() {
         config: {
           responseModalities: [Modality.AUDIO],
           tools: [{ functionDeclarations: [updateLeadTool] }],
-          // Disable thinking budget to improve latency for conversational feel
           thinkingConfig: { thinkingBudget: 0 },
           systemInstruction: {
             parts: [{
-              text: `You are Radhika, a warm, hospitable, and business-savvy Diamond Sales Executive from BharatDiamondConnect. You speak with a distinct Indian English cadence, being polite, respectful, and slightly formal yet warm (e.g., using "Ji", "Kindly", "Please").
-
-              CORE RULES:
-              1. **SINGLE FOCUS**: You are exclusively a DIAMOND SALES EXPERT. Do not discuss other topics.
-              2. **NOISE FILTER**: Ignore faint background noises. Only respond to clear voice inputs.
-              3. **SUMMARY MANDATE**: Before you say your final goodbye, you MUST call 'updateLeadInfo' with a complete 'summary' of what was discussed.
-              4. **OFF-TOPIC HANDLING**: If the user discusses anything unrelated (weather, sports, politics, etc.), politely deflect with warmth: "Ji, that is interesting, but let us focus on finding you the perfect diamond right now."
-
-              TONE & STYLE:
-              - **Indian English Persona**: Use words like "Kindly", "Please", "Do the needful", "Ji". Speak with a musical, welcoming tone.
-              - **Active Listening**: Acknowledge answers before moving on. E.g., "Ah, Round shape is a classic choice, very beautiful."
-              - **Clear & Soft**: Speak clearly but with a gentle, inviting tone.
-
-              SCRIPT & FLOW (Adhere strictly):
-              1. **Step 1: Introduction (MANDATORY WAIT)**:
-                 - Say: "Namaste! I am Radhika from BharatDiamondConnect. We source the finest certified diamonds directly from manufacturers. I would be honored to help you. Is this a good time to speak?"
-                 - **STOP**. Do not ask for name or details yet. Wait for the user to reply.
-
-              2. **Step 2: Confirmation**:
-                 - If User says "Yes", "Go ahead": Say, "Shukriya (Thank you). To start, may I please know your full name?"
-                 - If User says "No" or "Busy": Say "Koi baat nahi (No problem). Please call us when you are free. Have a wonderful day!" and stop.
-
-              3. **Step 3: Lead Identification**:
-                 - After Name: "Nice to meet you, Ji. May I have your mobile number for WhatsApp updates?"
-                 - After Mobile: "Perfect. And which city are you calling from today?"
-
-              4. **Step 4: Requirement Gathering**:
-                 - Ask Diamond Shape: "What shape of diamond are you looking for? Round, Oval, or something else?"
-                 - Acknowledge answer then Ask Price Range: "And what is your budget range for this?"
-                 - Acknowledge answer then Ask Carat Size: "Finally, what carat size do you prefer?"
-
-              5. **Step 5: Closing**:
-                 - **CRITICAL**: Call 'updateLeadInfo' with the final summary NOW.
-                 - Then say: "Thank you so much, [Name]. I have noted everything down. Please save our dealership number: 955 955 001. We will WhatsApp you the best options shortly. Have a lovely day, Ji!"
-
-              BEHAVIOR:
-              - Stay professional but very warm.
-              - If the user pauses, wait patiently.
-              - If the conversation ends, ensure the summary is saved.` 
+              text: `You are Sanya, a Senior Diamond Sales Executive from SanyaGems.
+              
+              SELECTED LANGUAGE: ${selectedLanguage}
+              
+              CRITICAL INSTRUCTIONS:
+              1. **LANGUAGE MANDATE**: You MUST speak ONLY in ${selectedLanguage} throughout this entire session. Do not switch languages unless explicitly asked.
+              2. **IMMEDIATE START**: As soon as the connection opens, greet the user in ${selectedLanguage}. Introduce yourself and explain how you can help.
+              3. **ROLE**: You are exclusively a DIAMOND SALES EXPERT. Be professional, warm, and sophisticated.
+              4. **NOISE FILTER**: Ignore faint background noises.
+              5. **SUMMARY**: Call 'updateLeadInfo' with a summary before saying goodbye.
+              
+              SCRIPT FLOW:
+              1. **Introduction**: "Namaste! I am Sanya from SanyaGems. I specialize in sourcing exquisite diamonds for our exclusive clients. How may I assist you in finding your perfect gem today?" (Translate this concept to ${selectedLanguage}).
+              2. **Gather Info**: Ask for their name if not provided, then move to requirements.
+              3. **Requirements**: Discuss Shape, Budget, and Carat size.
+              4. **Closing**: Call 'updateLeadInfo', then say goodbye.
+              ` 
             }]
           },
           speechConfig: {
@@ -211,7 +178,6 @@ export default function App() {
             processor.onaudioprocess = (e) => {
               const inputData = e.inputBuffer.getChannelData(0);
               
-              // NOISE GATE IMPLEMENTATION
               let sumSquares = 0;
               for (let i = 0; i < inputData.length; i++) {
                 sumSquares += inputData[i] * inputData[i];
@@ -219,6 +185,8 @@ export default function App() {
               const rms = Math.sqrt(sumSquares / inputData.length);
 
               if (rms < NOISE_GATE_THRESHOLD) {
+                // Send silence (zeros) if below threshold to save bandwidth and help model's own VAD
+                // distinguish silence from background noise.
                 const silentData = new Float32Array(inputData.length);
                 const pcmBlob = createPcmBlob(silentData);
                 sessionPromise.then(session => session.sendRealtimeInput({ media: pcmBlob }));
@@ -231,20 +199,18 @@ export default function App() {
             source.connect(processor);
             processor.connect(audioContextRef.current!.destination);
 
-            // Force agent to speak first
-            setTimeout(() => {
-                sessionPromise.then(session => session.send({ parts: [{ text: "Hello Radhika, the call is connected. Please start your script." }], turnComplete: true }));
-            }, 500);
+            // Trigger immediate greeting without delay
+            sessionPromise.then(session => session.send({ 
+                parts: [{ text: `(System: The user has connected. IMMEDIATELY greet them in ${selectedLanguage}. Say "Namaste, I am Sanya from SanyaGems" and ask how you can help them find a diamond.)` }], 
+                turnComplete: true 
+            }));
           },
           onmessage: async (msg: LiveServerMessage) => {
             if (msg.toolCall) {
               for (const fc of msg.toolCall.functionCalls) {
                 if (fc.name === 'updateLeadInfo') {
                   const args = fc.args as any;
-                  setLeadData(prev => ({
-                    ...prev,
-                    ...args
-                  }));
+                  setLeadData(prev => ({ ...prev, ...args }));
                   sessionPromise.then(session => session.sendToolResponse({
                     functionResponses: {
                       id: fc.id,
@@ -259,6 +225,7 @@ export default function App() {
             const audioData = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
             if (audioData && outputAudioContextRef.current) {
               const outputAudioCtx = outputAudioContextRef.current;
+              // Ensure time is monotonic
               if (nextStartTimeRef.current < outputAudioCtx.currentTime) {
                 nextStartTimeRef.current = outputAudioCtx.currentTime;
               }
@@ -281,8 +248,13 @@ export default function App() {
                 source.onended = () => {
                     sourcesRef.current.delete(source);
                     if (sourcesRef.current.size === 0) {
-                        playFeedbackTone(outputAudioCtx, 'end');
-                        setIsAiSpeaking(false);
+                        // Small delay to prevent flickering if next chunk comes immediately
+                        setTimeout(() => {
+                            if (sourcesRef.current.size === 0) {
+                                playFeedbackTone(outputAudioCtx, 'end');
+                                setIsAiSpeaking(false);
+                            }
+                        }, 50);
                     }
                 };
               } catch (e) {
@@ -291,7 +263,7 @@ export default function App() {
             }
           },
           onclose: () => {
-            console.log("Session closed from server side");
+            console.log("Session closed from server");
             setStatus('ended');
             setIsAiSpeaking(false);
             clearInterval(volInterval);
@@ -311,22 +283,27 @@ export default function App() {
   };
 
   const cleanupSession = async () => {
-    // Helper to stop all media and clear session references without changing UI status
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
     
-    // Close Audio Contexts
+    // Proper cleanup of AudioContexts
     if (audioContextRef.current) {
-      try { await audioContextRef.current.close(); } catch(e) {}
+      if (audioContextRef.current.state !== 'closed') {
+        try { await audioContextRef.current.close(); } catch(e) {}
+      }
       audioContextRef.current = null;
     }
-    
-    if (sessionPromiseRef.current) {
-        // Just drop the reference to 'close' the session from client side
-        sessionPromiseRef.current = null;
+    if (outputAudioContextRef.current) {
+      if (outputAudioContextRef.current.state !== 'closed') {
+        try { await outputAudioContextRef.current.close(); } catch(e) {}
+      }
+      outputAudioContextRef.current = null;
     }
+    
+    sessionPromiseRef.current = null;
+    sourcesRef.current.clear();
   };
 
   const endCall = async () => {
@@ -335,11 +312,10 @@ export default function App() {
   };
 
   const restart = async () => {
-      // Clean up first, then reset to disconnected
       await cleanupSession();
       setLeadData(INITIAL_LEAD_DATA);
       setIsAiSpeaking(false);
-      setStatus('disconnected');
+      setStatus('disconnected'); // Reset to Start Screen
   };
 
   return (
@@ -347,6 +323,7 @@ export default function App() {
         <div className="mobile-frame">
           <PhoneInterface 
               status={status === 'ended' ? 'ended' : status}
+              activeLanguage={activeLanguage}
               isAiSpeaking={isAiSpeaking}
               onStartCall={status === 'ended' ? restart : connectToGemini}
               onEndCall={endCall}

@@ -24,16 +24,27 @@ export async function decodeAudioData(
   sampleRate: number = 24000,
   numChannels: number = 1
 ): Promise<AudioBuffer> {
+  // Use a DataView for consistent endianness handling if needed, 
+  // but Int16Array is generally safe for the raw PCM coming from Gemini.
   const dataInt16 = new Int16Array(data.buffer);
   const frameCount = dataInt16.length / numChannels;
+  
+  // Create buffer with the specific sample rate
   const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
 
+  // Optimized loop: 
+  // - Minimize property lookups inside the loop
+  // - Use typed arrays efficiently
+  const scale = 1 / 32768.0;
+  
   for (let channel = 0; channel < numChannels; channel++) {
     const channelData = buffer.getChannelData(channel);
+    // Simple block copy/convert
     for (let i = 0; i < frameCount; i++) {
-      channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
+      channelData[i] = dataInt16[i * numChannels + channel] * scale;
     }
   }
+  
   return buffer;
 }
 
@@ -41,7 +52,9 @@ export function createPcmBlob(data: Float32Array): { data: string; mimeType: str
   const l = data.length;
   const int16 = new Int16Array(l);
   for (let i = 0; i < l; i++) {
-    int16[i] = data[i] * 32768;
+    // Simple clamping to prevent wrap-around distortion
+    const s = Math.max(-1, Math.min(1, data[i]));
+    int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
   }
   return {
     data: arrayBufferToBase64(int16.buffer),
